@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0f14" />
+  <title>Froggy Server Status</title>
+
+  <style>
+    :root {
+      --bg: #090d12;
+      --panel: #111821;
+      --panel-2: #16202b;
+      --border: #243141;
+      --text: #f3f7fb;
+      --muted: #91a0b2;
+      --green: #35d07f;
+      --red: #ff5b64;
+      --yellow: #f4c95d;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(53, 208, 127, 0.09), transparent 35rem),
+        var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 70px;
+    }
+
+    .site-header {
+      margin-bottom: 24px;
+    }
+
+    .site-header h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      line-height: 1;
+      letter-spacing: -0.045em;
+      font-weight: 900;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .summary-card,
+    .server-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .summary-card {
+      padding: 18px 20px;
+    }
+
+    .summary-label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .summary-value {
+      margin-top: 6px;
+      font-size: 1.55rem;
+      font-weight: 850;
+    }
+
+    .servers {
+      display: grid;
+      gap: 14px;
+    }
+
+    .server-card {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .server-top {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .server-name {
+      font-size: 1.2rem;
+      font-weight: 850;
+      overflow-wrap: anywhere;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 0.76rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .status::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .status.online::before,
+    .status.offline::before {
+      animation: statusPulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes statusPulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.85;
+      }
+      50% {
+        transform: scale(1.28);
+        opacity: 1;
+      }
+    }
+
+    .status.online {
+      color: var(--green);
+      background: rgba(53, 208, 127, 0.1);
+    }
+
+    .status.offline {
+      color: var(--red);
+      background: rgba(255, 91, 100, 0.1);
+    }
+
+    .status.checking {
+      color: var(--yellow);
+      background: rgba(244, 201, 93, 0.1);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(100px, auto));
+      gap: 10px;
+    }
+
+    .metric {
+      min-width: 100px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 10px 12px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .metric-value {
+      font-weight: 800;
+      margin-top: 3px;
+      font-size: 0.94rem;
+    }
+
+    @media (max-width: 760px) {
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .server-card {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 470px) {
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+    <header class="site-header">
+      <h1>1key SMP Status</h1>
+    </header>
+
+    <section class="summary">
+      <div class="summary-card">
+        <div class="summary-label">Online endpoints</div>
+        <div class="summary-value" id="onlineCount">—</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">Total players</div>
+        <div class="summary-value" id="totalPlayers">—</div>
+      </div>
+    </section>
+
+    <section class="servers" id="servers"></section>
+  </main>
+
+  <script>
+    const SERVERS = [
+      {
+        name: "mc.1key.lol",
+        address: "mc.1key.lol",
+        edition: "java"
+      },
+      {
+        name: "bidders-convince.tun.ply.gg",
+        address: "bidders-convince.tun.ply.gg",
+        edition: "java"
+      },
+      {
+        name: "bidders-nic.tun.ply.gg:42325",
+        address: "bidders-nic.tun.ply.gg:42325",
+        edition: "bedrock"
+      }
+    ];
+
+    const serversElement = document.getElementById("servers");
+    const onlineCountElement = document.getElementById("onlineCount");
+    const totalPlayersElement = document.getElementById("totalPlayers");
+
+    function escapeHtml(value = "") {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function makeCard(server, index) {
+      const card = document.createElement("article");
+      card.className = "server-card";
+      card.id = `server-${index}`;
+
+      card.innerHTML = `
+        <div class="server-top">
+          <div class="server-name">${escapeHtml(server.name)}</div>
+          <div class="status checking" data-status>Checking</div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">Players</div>
+            <div class="metric-value" data-players>—</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-label">Version / Edition</div>
+            <div class="metric-value" data-version>—</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-label">Ping</div>
+            <div class="metric-value" data-response>—</div>
+          </div>
+        </div>
+      `;
+
+      serversElement.appendChild(card);
+    }
+
+    function renderInitialCards() {
+      serversElement.innerHTML = "";
+      SERVERS.forEach(makeCard);
+    }
+
+    async function checkServer(server, index) {
+      const card = document.getElementById(`server-${index}`);
+      const status = card.querySelector("[data-status]");
+      const players = card.querySelector("[data-players]");
+      const version = card.querySelector("[data-version]");
+      const response = card.querySelector("[data-response]");
+
+      const edition = server.edition === "bedrock" ? "bedrock" : "java";
+      const editionLabel = edition === "bedrock" ? "Bedrock" : "Java";
+      const url =
+        `https://api.mcstatus.io/v2/status/${edition}/${encodeURIComponent(server.address)}?timeout=5`;
+
+      const started = performance.now();
+
+      try {
+        const fetchResponse = await fetch(url, {
+          method: "GET",
+          cache: "no-store"
+        });
+
+        const elapsed = Math.round(performance.now() - started);
+
+        if (!fetchResponse.ok) {
+          throw new Error(`HTTP ${fetchResponse.status}`);
+        }
+
+        const data = await fetchResponse.json();
+
+        if (data.online) {
+          status.className = "status online";
+          status.textContent = "Online";
+
+          const online = data.players?.online ?? 0;
+          const max = data.players?.max ?? "?";
+          players.textContent = `${online} / ${max}`;
+
+          let versionName = "Unknown";
+
+          if (edition === "java") {
+            versionName = data.version?.name_clean || "Unknown";
+          } else {
+            versionName = data.version?.name || "Unknown";
+          }
+
+          version.textContent = `${versionName} • ${editionLabel}`;
+          response.textContent = `${elapsed} ms`;
+
+          return {
+            online: true,
+            players: Number(online) || 0
+          };
+        }
+
+        status.className = "status offline";
+        status.textContent = "Offline";
+        players.textContent = "0";
+        version.textContent = `— • ${editionLabel}`;
+        response.textContent = `${elapsed} ms`;
+
+        return {
+          online: false,
+          players: 0
+        };
+      } catch (error) {
+        console.error(`Failed to check ${server.address}:`, error);
+
+        status.className = "status offline";
+        status.textContent = "Error";
+        players.textContent = "—";
+        version.textContent = `— • ${editionLabel}`;
+        response.textContent = "Failed";
+
+        return {
+          online: false,
+          players: 0
+        };
+      }
+    }
+
+    async function checkAllServers() {
+      const results = await Promise.all(
+        SERVERS.map((server, index) => checkServer(server, index))
+      );
+
+      const onlineCount = results.filter(result => result.online).length;
+      const totalPlayers = results.reduce(
+        (highest, result) => Math.max(highest, result.players),
+        0
+      );
+
+      onlineCountElement.textContent = `${onlineCount} / ${SERVERS.length}`;
+      totalPlayersElement.textContent = totalPlayers;
+    }
+
+    renderInitialCards();
+    checkAllServers();
+  </script>
+</body>
+</html>
